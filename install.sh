@@ -124,6 +124,7 @@ chrony_install(){
 
     judge "chronyd 启动 "
 
+    ${INS} -y install tzdata
     timedatectl set-timezone Asia/Shanghai
 
     echo -e "${OK} ${GreenBG} 等待时间同步 ${Font}"
