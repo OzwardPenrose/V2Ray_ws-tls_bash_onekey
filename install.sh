@@ -147,7 +147,7 @@ chrony_install(){
 }
 
 dependency_install(){
-    ${INS} install wget git lsof iputils-ping -y
+    ${INS} install wget git lsof iputils-ping uuid-runtime -y
 
     if [[ "${ID}" == "centos" ]];then
        ${INS} -y install crontabs
