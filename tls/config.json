@@ -7,8 +7,7 @@
   "inbounds": [
     {
       "port": 10086, 
-      "listen": "127.0.0.1", 
-      "tag": "vmess-in", 
+      "listen": "127.0.0.1"
       "protocol": "vmess", 
       "settings": {
         "clients": [
@@ -28,14 +27,7 @@
   ], 
   "outbounds": [
     {
-      "protocol": "freedom", 
-      "settings": { }, 
-      "tag": "direct"
-    }, 
-    {
-      "protocol": "blackhole", 
-      "settings": { }, 
-      "tag": "blocked"
+      "protocol": "freedom"
     }
   ], 
   "dns": {
@@ -46,18 +38,6 @@
 	  "8.8.8.8",
 	  "8.8.4.4",
 	  "localhost"
-    ]
-  },
-  "routing": {
-    "domainStrategy": "AsIs",
-    "rules": [
-      {
-        "type": "field",
-        "inboundTag": [
-          "vmess-in"
-        ],
-        "outboundTag": "direct"
-      }
     ]
   }
 }
