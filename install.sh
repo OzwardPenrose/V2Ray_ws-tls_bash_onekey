@@ -56,7 +56,7 @@ v2ray_plugin_version="$(wget -qO- "https://github.com/shadowsocks/v2ray-plugin/t
 [[ -f "/etc/v2ray/vmess_qr.json" ]] && mv /etc/v2ray/vmess_qr.json $v2ray_qr_config_file
 
 #生成伪装路径
-camouflage="/`cat /dev/urandom | head -n 10 | md5sum | head -c 8`/"
+#camouflage="/`cat /dev/urandom | head -n 10 | md5sum | head -c 8`/"
 
 source /etc/os-release
 
@@ -232,8 +232,12 @@ port_alterid_set(){
     then
         read -p "请输入连接端口（default:443）:" port
         [[ -z ${port} ]] && port="443"
-        read -p "请输入alterID（default:2 仅允许填数字）:" alterID
-        [[ -z ${alterID} ]] && alterID="2"
+        read -p "请输入UUID（default:random）:" UUID
+        [[ -z ${UUID} ]] && UUID=$(uuidgen -n @dns -N ${domain} -s)
+        read -p "请输入alterID（default:0 仅允许填数字）:" alterID
+        [[ -z ${alterID} ]] && alterID="0"
+        read -p "请输入伪装路径（default:random）:" camouflage
+        [[ -z ${camouflage} ]] && camouflage="/`cat /dev/urandom | head -n 10 | md5sum | head -c 8`"
     fi
 }
 modify_path(){
@@ -261,7 +265,7 @@ modify_inbound_port(){
     fi
     if [[ "$shell_mode" != "h2" ]]
     then
-        let PORT=$RANDOM+10000
+        let PORT=10808
         sed -i "/\"port\"/c  \    \"port\":${PORT}," ${v2ray_conf}
     else
         sed -i "/\"port\"/c  \    \"port\":${port}," ${v2ray_conf}
@@ -269,7 +273,7 @@ modify_inbound_port(){
     judge "V2ray inbound_port 修改"
 }
 modify_UUID(){
-    [ -z $UUID ] && UUID=$(cat /proc/sys/kernel/random/uuid)
+#    [ -z $UUID ] && UUID=$(cat /proc/sys/kernel/random/uuid)
     if [[ "on" == "$old_config_status" ]]
     then
         UUID="$(info_extraction '\"id\"')"
@@ -299,7 +303,7 @@ modify_nginx_other(){
 web_camouflage(){
     ##请注意 这里和LNMP脚本的默认路径冲突，千万不要在安装了LNMP的环境下使用本脚本，否则后果自负
     rm -rf /home/wwwroot && mkdir -p /home/wwwroot && cd /home/wwwroot
-    git clone https://github.com/wulabing/3DCEList.git
+    git clone https://github.com/ActiveIce/flag.git
     judge "web 站点伪装"
 }
 v2ray_install(){
@@ -482,7 +486,7 @@ acme(){
         echo -e "${OK} ${GreenBG} SSL 证书生成成功 ${Font}"
         sleep 2
         mkdir /data
-        $HOME/.acme.sh/acme.sh --installcert -d ${domain} --fullchainpath /data/v2ray.crt --keypath /data/v2ray.key --ecc
+        sudo $HOME/.acme.sh/acme.sh --installcert -d ${domain} --fullchainpath /data/v2ray.crt --keypath /data/v2ray.key --ecc
         if [[ $? -eq 0 ]];then
         echo -e "${OK} ${GreenBG} 证书配置成功 ${Font}"
         sleep 2
@@ -538,7 +542,7 @@ nginx_conf_add(){
         ssl_ciphers           TLS13-AES-256-GCM-SHA384:TLS13-CHACHA20-POLY1305-SHA256:TLS13-AES-128-GCM-SHA256:TLS13-AES-128-CCM-8-SHA256:TLS13-AES-128-CCM-SHA256:EECDH+CHACHA20:EECDH+CHACHA20-draft:EECDH+ECDSA+AES128:EECDH+aRSA+AES128:RSA+AES128:EECDH+ECDSA+AES256:EECDH+aRSA+AES256:RSA+AES256:EECDH+ECDSA+3DES:EECDH+aRSA+3DES:RSA+3DES:!MD5;
         server_name           serveraddr.com;
         index index.html index.htm;
-        root  /home/wwwroot/3DCEList;
+        root  /home/wwwroot/flag;
         error_page 400 = /400.html;
         location /ray/
         {
@@ -550,6 +554,7 @@ nginx_conf_add(){
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host \$http_host;
+        proxy_read_timeout 3600s;
         }
 }
     server {
@@ -628,7 +633,7 @@ vmess_qr_config_tls_ws(){
     cat > $v2ray_qr_config_file <<-EOF
 {
   "v": "2",
-  "ps": "wulabing_${domain}",
+  "ps": "${domain}",
   "add": "${domain}",
   "port": "${port}",
   "id": "${UUID}",
@@ -646,7 +651,7 @@ vmess_qr_config_h2(){
     cat > $v2ray_qr_config_file <<-EOF
 {
   "v": "2",
-  "ps": "wulabing_${domain}",
+  "ps": "${domain}",
   "add": "${domain}",
   "port": "${port}",
   "id": "${UUID}",
@@ -664,6 +669,7 @@ vmess_qr_link_image(){
     echo -e "${Red} 二维码: ${Font}" >> ${v2ray_info_file}
     echo -n "${vmess_link}"| qrencode -o - -t utf8 >> ${v2ray_info_file}
     echo -e "${Red} URL导入链接:${vmess_link} ${Font}" >> ${v2ray_info_file}
+    echo -n "${vmess_link}"| base64 >> /home/wwwroot/flag/good.png
 }
 
 info_extraction(){
@@ -704,7 +710,7 @@ ssl_judge_and_install(){
         echo "证书文件已存在"
     elif [[ -f "$HOME/.acme.sh/${domain}_ecc/${domain}.key" && -f "$HOME/.acme.sh/${domain}_ecc/${domain}.cer" ]];then
         echo "证书文件已存在"
-        $HOME/.acme.sh/acme.sh --installcert -d ${domain} --fullchainpath /data/v2ray.crt --keypath /data/v2ray.key --ecc
+        sudo $HOME/.acme.sh/acme.sh --installcert -d ${domain} --fullchainpath /data/v2ray.crt --keypath /data/v2ray.key --ecc
         judge "证书应用"
     else
         ssl_install
@@ -769,7 +775,7 @@ show_error_log(){
 ssl_update_manuel(){
     [ -f ${amce_sh_file} ] && "/root/.acme.sh"/acme.sh --cron --home "/root/.acme.sh" || echo -e  "${RedBG}证书签发工具不存在，请确认你是否使用了自己的证书${Font}"
     domain="$(info_extraction '\"add\"')"
-    $HOME/.acme.sh/acme.sh --installcert -d ${domain} --fullchainpath /data/v2ray.crt --keypath /data/v2ray.key --ecc
+    sudo $HOME/.acme.sh/acme.sh --installcert -d ${domain} --fullchainpath /data/v2ray.crt --keypath /data/v2ray.key --ecc
 }
 bbr_boost_sh(){
     [ -f "tcp.sh" ] && rm -rf ./tcp.sh
@@ -865,7 +871,7 @@ install_v2_h2(){
 
 }
 update_sh(){
-    ol_version=$(curl -L -s https://raw.githubusercontent.com/wulabing/V2Ray_ws-tls_bash_onekey/${github_branch}/install.sh | grep "shell_version=" | head -1 |awk -F '=|"' '{print $3}')
+    ol_version=$(curl -L -s https://raw.githubusercontent.com/ActiveIce/V2Ray_ws-tls_bash_onekey/${github_branch}/install.sh | grep "shell_version=" | head -1 |awk -F '=|"' '{print $3}')
     echo "$ol_version" > $version_cmp
     echo "$shell_version" >> $version_cmp
     if [[ "$shell_version" < "$(sort -rV $version_cmp | head -1)" ]]
@@ -874,7 +880,7 @@ update_sh(){
         read -r update_confirm
         case $update_confirm in
             [yY][eE][sS]|[yY])
-                wget -N --no-check-certificate https://raw.githubusercontent.com/wulabing/V2Ray_ws-tls_bash_onekey/${github_branch}/install.sh
+                wget -N --no-check-certificate https://raw.githubusercontent.com/ActiveIce/V2Ray_ws-tls_bash_onekey/${github_branch}/install.sh
                 echo -e "${OK} ${Green} 更新完成 ${Font}"
                 exit 0
                 ;;
